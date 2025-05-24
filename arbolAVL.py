@@ -1,14 +1,16 @@
 import tkinter as tk
 from tkinter import messagebox
 
-# === Nodo y Árbol BST ===
-class Nodo:
+# === Nodo AVL ===
+class NodoAVL:
     def __init__(self, valor):
         self.valor = valor
         self.izquierda = None
         self.derecha = None
+        self.altura = 1
 
-class ArbolBinarioBusqueda:
+# === Árbol AVL ===
+class ArbolAVL:
     def __init__(self):
         self.raiz = None
 
@@ -16,13 +18,39 @@ class ArbolBinarioBusqueda:
         self.raiz = self._insertar(self.raiz, valor)
 
     def _insertar(self, nodo, valor):
-        if nodo is None:
-            return Nodo(valor)
+        if not nodo:
+            return NodoAVL(valor)
         if valor < nodo.valor:
             nodo.izquierda = self._insertar(nodo.izquierda, valor)
         elif valor > nodo.valor:
             nodo.derecha = self._insertar(nodo.derecha, valor)
-        return nodo
+        else:
+            return nodo  # duplicado no insertado
+
+        nodo.altura = 1 + max(self._get_altura(nodo.izquierda), self._get_altura(nodo.derecha))
+        return self._balancear(nodo)
+
+    def eliminar(self, valor):
+        self.raiz = self._eliminar(self.raiz, valor)
+
+    def _eliminar(self, nodo, valor):
+        if not nodo:
+            return nodo
+        if valor < nodo.valor:
+            nodo.izquierda = self._eliminar(nodo.izquierda, valor)
+        elif valor > nodo.valor:
+            nodo.derecha = self._eliminar(nodo.derecha, valor)
+        else:
+            if not nodo.izquierda:
+                return nodo.derecha
+            elif not nodo.derecha:
+                return nodo.izquierda
+            temp = self._min_value_node(nodo.derecha)
+            nodo.valor = temp.valor
+            nodo.derecha = self._eliminar(nodo.derecha, temp.valor)
+
+        nodo.altura = 1 + max(self._get_altura(nodo.izquierda), self._get_altura(nodo.derecha))
+        return self._balancear(nodo)
 
     def buscar(self, valor):
         return self._buscar(self.raiz, valor)
@@ -34,29 +62,49 @@ class ArbolBinarioBusqueda:
             return self._buscar(nodo.izquierda, valor)
         return self._buscar(nodo.derecha, valor)
 
-    def eliminar(self, valor):
-        self.raiz = self._eliminar(self.raiz, valor)
-
-    def _eliminar(self, nodo, valor):
-        if nodo is None:
-            return nodo
-        if valor < nodo.valor:
-            nodo.izquierda = self._eliminar(nodo.izquierda, valor)
-        elif valor > nodo.valor:
-            nodo.derecha = self._eliminar(nodo.derecha, valor)
-        else:
-            if nodo.izquierda is None:
-                return nodo.derecha
-            elif nodo.derecha is None:
-                return nodo.izquierda
-            temp = self._min_value_node(nodo.derecha)
-            nodo.valor = temp.valor
-            nodo.derecha = self._eliminar(nodo.derecha, temp.valor)
+    def _balancear(self, nodo):
+        balance = self._get_balance(nodo)
+        if balance > 1:
+            if self._get_balance(nodo.izquierda) < 0:
+                nodo.izquierda = self._rotar_izquierda(nodo.izquierda)
+            return self._rotar_derecha(nodo)
+        if balance < -1:
+            if self._get_balance(nodo.derecha) > 0:
+                nodo.derecha = self._rotar_derecha(nodo.derecha)
+            return self._rotar_izquierda(nodo)
         return nodo
+
+    def _rotar_derecha(self, y):
+        x = y.izquierda
+        T2 = x.derecha
+        x.derecha = y
+        y.izquierda = T2
+        y.altura = 1 + max(self._get_altura(y.izquierda), self._get_altura(y.derecha))
+        x.altura = 1 + max(self._get_altura(x.izquierda), self._get_altura(x.derecha))
+        return x
+
+    def _rotar_izquierda(self, x):
+        y = x.derecha
+        T2 = y.izquierda
+        y.izquierda = x
+        x.derecha = T2
+        x.altura = 1 + max(self._get_altura(x.izquierda), self._get_altura(x.derecha))
+        y.altura = 1 + max(self._get_altura(y.izquierda), self._get_altura(y.derecha))
+        return y
+
+    def _get_altura(self, nodo):
+        if not nodo:
+            return 0
+        return nodo.altura
+
+    def _get_balance(self, nodo):
+        if not nodo:
+            return 0
+        return self._get_altura(nodo.izquierda) - self._get_altura(nodo.derecha)
 
     def _min_value_node(self, nodo):
         actual = nodo
-        while actual.izquierda is not None:
+        while actual.izquierda:
             actual = actual.izquierda
         return actual
 
@@ -72,38 +120,24 @@ class ArbolBinarioBusqueda:
             self._recorrido_en_orden(nodo.derecha, valores)
 
     def calcular_altura(self):
-        return self._calcular_altura(self.raiz)
+        return self._get_altura(self.raiz) - 1
 
-    def _calcular_altura(self, nodo):
-        if nodo is None:
-            return -1
-        return 1 + max(self._calcular_altura(nodo.izquierda), self._calcular_altura(nodo.derecha))
-
-# === Interfaz Tkinter ===
-class App:
+# === Interfaz Tkinter para AVL ===
+class AppAVL:
     def __init__(self, root):
-        self.arbol = ArbolBinarioBusqueda()
+        self.arbol = ArbolAVL()
 
-        root.title("Árbol Binario de Búsqueda - BST")
+        root.title("Árbol AVL - Interfaz")
         root.geometry("400x300")
 
         self.entrada = tk.Entry(root)
         self.entrada.pack(pady=5)
 
-        btn_insertar = tk.Button(root, text="Insertar", command=self.insertar)
-        btn_insertar.pack()
-
-        btn_buscar = tk.Button(root, text="Buscar", command=self.buscar)
-        btn_buscar.pack()
-
-        btn_eliminar = tk.Button(root, text="Eliminar", command=self.eliminar)
-        btn_eliminar.pack()
-
-        btn_recorrido = tk.Button(root, text="Recorrido en Orden", command=self.mostrar_recorrido)
-        btn_recorrido.pack()
-
-        btn_altura = tk.Button(root, text="Calcular Altura", command=self.mostrar_altura)
-        btn_altura.pack()
+        tk.Button(root, text="Insertar", command=self.insertar).pack()
+        tk.Button(root, text="Buscar", command=self.buscar).pack()
+        tk.Button(root, text="Eliminar", command=self.eliminar).pack()
+        tk.Button(root, text="Recorrido en Orden", command=self.mostrar_recorrido).pack()
+        tk.Button(root, text="Calcular Altura", command=self.mostrar_altura).pack()
 
         self.resultado = tk.Label(root, text="", wraplength=380)
         self.resultado.pack(pady=10)
@@ -121,7 +155,7 @@ class App:
             valor = int(self.entrada.get())
             encontrado = self.arbol.buscar(valor)
             if encontrado:
-                self.resultado.config(text=f"{valor} encontrado en el árbol")
+                self.resultado.config(text=f"{valor} encontrado")
             else:
                 self.resultado.config(text=f"{valor} NO encontrado")
         except ValueError:
@@ -143,9 +177,8 @@ class App:
         altura = self.arbol.calcular_altura()
         self.resultado.config(text=f"Altura del árbol: {altura}")
 
-# === Ejecutar aplicación ===
+# === Ejecutar ===
 if __name__ == "__main__":
     ventana = tk.Tk()
-    app = App(ventana)
+    app = AppAVL(ventana)
     ventana.mainloop()
-
